@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.macro.mall.dao.OmsOrderStatisticsInfoDao">
+
+    <select id="getStatInfo" resultType="com.macro.mall.dto.OmsOrderStatisticsInfoResult">
+        select (select count(id) from oms_order where date(create_time)=date(CURDATE())) as todayOrderTotal,
+        (select coalesce(sum(pay_amount),0) from oms_order where payment_time is not null and date(payment_time)=date(CURDATE())) as todayOrderAmount,
+        (select count(id) from oms_order where date(create_time)=DATE_SUB(CURDATE(), INTERVAL 1 DAY)) as yesterdayOrderTotal,
+        (select coalesce(sum(pay_amount),0) from oms_order where payment_time is not null and date(payment_time)=DATE_SUB(CURDATE(), INTERVAL 1 DAY)) as yesterdayOrderAmount,
+        (select count(id) from oms_order where status=0) as orderPayingTotal,
+        (select count(id) from oms_order where status=1) as orderDeliveringTotal,
+        (select count(id) from oms_order where status=2) as orderDeliveredTotal,
+        (select count(id) from oms_order where status=3) as orderCompletedTotal,
+        (select count(id) from oms_order where status=2 and confirm_status=0) as orderConfirmTotal,
+        (select count(id) from oms_order_return_apply where status=0) as orderRefundApplyTotal,
+        (select count(id) from oms_order_return_apply where status=1) as orderRefundReturnTotal,
+
+        (select count(id) from oms_order where YEAR(create_time)=YEAR(CURDATE()) and MONTH(create_time)=MONTH(CURDATE())) as thisMonthOrderTotal,
+        (select count(id) from oms_order where YEAR(create_time)=YEAR(CURDATE()) and WEEK(create_time)=WEEK(CURDATE())) as thisWeekOrderTotal,
+        (select coalesce(sum(pay_amount),0) from oms_order where payment_time is not null and YEAR(create_time)=YEAR(CURDATE()) and MONTH(create_time)=MONTH(CURDATE())) as thisMonthOrderAmount,
+        (select coalesce(sum(pay_amount),0) from oms_order where payment_time is not null and YEAR(create_time)=YEAR(CURDATE()) and WEEK(create_time)=WEEK(CURDATE())) as thisWeekOrderAmount,
+        (select count(id) from oms_order where YEAR(create_time)=YEAR(date_sub(CURDATE(),INTERVAL 1 MONTH)) and MONTH(create_time)=MONTH(date_sub(CURDATE(),INTERVAL 1 MONTH))) as lastMonthOrderTotal,
+        (select count(id) from oms_order where YEAR(create_time)=YEAR(date_sub(CURDATE(),INTERVAL 7 DAY)) and WEEK(create_time)=WEEK(date_sub(CURDATE(),INTERVAL 7 DAY))) as lastWeekOrderTotal,
+        (select coalesce(sum(pay_amount),0) from oms_order where payment_time is not null and YEAR(create_time)=YEAR(date_sub(CURDATE(),INTERVAL 1 MONTH)) and MONTH(create_time)=MONTH(date_sub(CURDATE(),INTERVAL 1 MONTH))) as lastMonthOrderAmount,
+        (select coalesce(sum(pay_amount),0) from oms_order where payment_time is not null and YEAR(create_time)=YEAR(date_sub(CURDATE(),INTERVAL 7 DAY)) and WEEK(create_time)=WEEK(date_sub(CURDATE(),INTERVAL 7 DAY))) as lastWeekOrderAmount
+    </select>
+
+    <select id="getStatInfoOfDate" resultType="com.macro.mall.dto.OmsOrderStatisticsInfoDateResult">
+        select sum(pay_amount) as orderAmount,count(id) as orderCount,date(payment_time) as date from oms_order where payment_time is not null and payment_time BETWEEN #{startDate} and #{endDate} group by date(payment_time)
+    </select>
+</mapper>
