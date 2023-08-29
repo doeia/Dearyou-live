@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.macro.mall.portal.dao.PortalOrderDao">
+    <resultMap id="orderDetailMap" type="com.macro.mall.portal.domain.OmsOrderDetail"
+               extends="com.macro.mall.mapper.OmsOrderMapper.BaseResultMap">
+        <collection property="orderItemList" columnPrefix="ot_"
+                    resultMap="com.macro.mall.mapper.OmsOrderItemMapper.BaseResultMap">
+        </collection>
+    </resultMap>
+    <resultMap id="orderDetailResultMap" type="com.macro.mall.portal.domain.OrderDetailResult"
+               extends="com.macro.mall.mapper.OmsOrderMapper.BaseResultMap">
+        <result column="id_card" jdbcType="BIGINT" property="idCard" />
+        <result column="name" jdbcType="VARCHAR" property="couponName" />
+        <result column="calAmount" jdbcType="DECIMAL" property="calAmount" />
+        <result column="statusDesc" jdbcType="VARCHAR" property="statusDesc" />
+        <result column="createTimeDesc" jdbcType="VARCHAR" property="createTimeDesc" />
+        <collection property="orderDetailItemList" columnPrefix="oi_"
+                    resultMap="com.macro.mall.mapper.OrderItemDetailMapper.BaseResultMap">
+        </collection>
+    </resultMap>
+    <resultMap id="orderMap" type="com.macro.mall.portal.domain.OrderResult" extends="com.macro.mall.mapper.OmsOrderMapper.BaseResultMap">
+        <result column="statusDesc" jdbcType="VARCHAR" property="statusDesc" />
+        <result column="createTimeDesc" jdbcType="VARCHAR" property="createTimeDesc" />
+        <collection property="orderDetailItemList" column="{orderId=id}" select="selectOrderItems">
+        </collection>
+    </resultMap>
+    <select id="getDetail" resultMap="orderDetailMap">
+        SELECT
+            o.id,
+            o.order_sn,
+            o.coupon_id,
+            o.integration,
+            o.member_id,
+            ot.id ot_id,
+            ot.product_name ot_product_name,
+            ot.product_sku_id ot_product_sku_id,
+            ot.product_sku_code ot_product_sku_code,
+            ot.product_quantity ot_product_quantity
+        FROM
+            oms_order o
+            LEFT JOIN oms_order_item ot ON o.id = ot.order_id
+        WHERE
+            o.id = #{orderId}
+    </select>
+
+    <select id="getTimeOutOrders" resultMap="orderDetailMap">
+        SELECT
+            o.id,
+            o.order_sn,
+            o.coupon_id,
+            o.integration,
+            o.member_id,
+            o.use_integration,
+            ot.id               ot_id,
+            ot.product_name     ot_product_name,
+            ot.product_sku_id   ot_product_sku_id,
+            ot.product_sku_code ot_product_sku_code,
+            ot.product_quantity ot_product_quantity
+        FROM
+            oms_order o
+            LEFT JOIN oms_order_item ot ON o.id = ot.order_id
+        WHERE
+            o.status = 0
+            AND o.create_time &lt; date_add(NOW(), INTERVAL -#{minute} MINUTE);
+    </select>
+    <select id="getOrderList" resultMap="orderMap">
+        SELECT
+        o.id,
+        o.order_sn,
+        o.total_amount,
+        o.pay_amount,
+        DATE_FORMAT(o.create_time,'%Y-%m-%d %H:%i:%s') createTimeDesc,
+        o.`status`,
+        case o.`status`
+        when 0 then '待支付'
+        when 1 then '待发货'
+        when 2 then '已发货'
+        when 3 then '已完成'
+        when 4 then '已关闭'
+        when 5 then '无效订单'
+        else '未知状态'
+        end statusDesc
+        FROM
+        oms_order o
+        INNER JOIN ums_member m ON member_id = m.id
+        WHERE
+        delete_status = 0
+        <if test="queryParam.status!=null and queryParam.status >= 0">
+            AND o.`status` = #{queryParam.status}
+        </if>
+        <if test="memberId!=null and memberId > 0">
+            AND `member_id` = #{memberId}
+        </if>
+        ORDER BY o.id DESC
+    </select>
+
+    <select id="selectOrderItems" resultMap="com.macro.mall.mapper.OmsOrderItemMapper.BaseResultMap">
+        select * from oms_order_item where order_id =#{orderId}
+    </select>
+
+    <select id="getOrderDetail" resultMap="orderDetailResultMap">
+        SELECT
+            o.id,
+            o.order_sn,
+            o.total_amount,
+            o.pay_amount,
+            DATE_FORMAT(o.create_time,'%Y-%m-%d %H:%i:%s') createTimeDesc,
+            o.`status`,
+            case o.`status`
+            when 0 then '待支付'
+            when 1 then '待发货'
+            when 2 then '已发货'
+            when 3 then '已完成'
+            when 4 then '已关闭'
+            when 5 then '无效订单'
+            else '未知状态'
+            end statusDesc,
+            o.freight_amount,
+            o.coupon_amount + o.promotion_amount + o.integration_amount + o.discount_amount calAmount,
+            o.delivery_company,
+            o.delivery_sn,
+            o.receiver_name,
+            o.receiver_phone,
+            o.receiver_province,
+            o.receiver_city,
+            o.receiver_region,
+            o.receiver_detail_address,
+            o.note,
+            o.id_card,
+            c.name couponName,
+            oi.id oi_id,
+            oi.order_id oi_order_id,
+            oi.product_id oi_product_id,
+            oi.product_name oi_product_name,
+            oi.product_brand oi_product_brand,
+            oi.product_pic oi_product_pic,
+            oi.product_price oi_product_price,
+            oi.product_sku_id oi_product_sku_id,
+            oi.product_sku_code oi_product_sku_code,
+            oi.product_quantity oi_product_quantity,
+            oi.sp1 oi_sp1,
+            oi.sp2 oi_sp2,
+            oi.sp3 oi_sp3,
+            oi.product_attr oi_product_attr,
+            oi.real_amount oi_real_amount
+        FROM
+            oms_order o
+            INNER JOIN ums_member m ON o.member_id = m.id
+            LEFT JOIN oms_order_item oi ON o.id = oi.order_id
+            LEFT JOIN sms_coupon c ON o.coupon_id = c.id
+        WHERE
+            o.id = #{orderId}
+    </select>
+
+    <update id="updateSkuStock">
+        UPDATE pms_sku_stock
+        SET
+        stock = CASE id
+        <foreach collection="itemList" item="item">
+            WHEN #{item.productSkuId} THEN stock - #{item.productQuantity}
+        </foreach>
+        END,
+        lock_stock = CASE id
+        <foreach collection="itemList" item="item">
+            WHEN #{item.productSkuId} THEN lock_stock - #{item.productQuantity}
+        </foreach>
+        END
+        WHERE
+        id IN
+        <foreach collection="itemList" item="item" separator="," open="(" close=")">
+            #{item.productSkuId}
+        </foreach>
+    </update>
+    <update id="updateNoSkuStock">
+        UPDATE pms_product
+        SET
+        stock = CASE id
+        <foreach collection="itemList" item="item">
+            WHEN #{item.productId} THEN stock - #{item.productQuantity}
+        </foreach>
+        END,
+        lock_stock = CASE id
+        <foreach collection="itemList" item="item">
+            WHEN #{item.productId} THEN lock_stock - #{item.productQuantity}
+        </foreach>
+        END
+        WHERE
+        id IN
+        <foreach collection="itemList" item="item" separator="," open="(" close=")">
+            #{item.productId}
+        </foreach>
+    </update>
+    <update id="updateOrderStatus">
+        update oms_order
+        set status=#{status}
+        where id in
+        <foreach collection="ids" item="id" separator="," open="(" close=")">
+            #{id}
+        </foreach>
+    </update>
+    <update id="releaseSkuStockLock">
+        UPDATE pms_sku_stock
+        SET
+        lock_stock = CASE id
+        <foreach collection="itemList" item="item">
+            WHEN #{item.productSkuId} THEN lock_stock - #{item.productQuantity}
+        </foreach>
+        END
+        WHERE
+        id IN
+        <foreach collection="itemList" item="item" separator="," open="(" close=")">
+            #{item.productSkuId}
+        </foreach>
+    </update>
+    <update id="releaseNoSkuStockLock">
+        UPDATE pms_product
+        SET
+        lock_stock = CASE id
+        <foreach collection="itemList" item="item">
+            WHEN #{item.productId} THEN lock_stock - #{item.productQuantity}
+        </foreach>
+        END
+        WHERE
+        id IN
+        <foreach collection="itemList" item="item" separator="," open="(" close=")">
+            #{item.productId}
+        </foreach>
+    </update>
+</mapper>

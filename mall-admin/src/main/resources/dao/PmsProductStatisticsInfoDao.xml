@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.macro.mall.dao.PmsProductStatisticsInfoDao">
+
+    <select id="getStatInfo" resultType="com.macro.mall.dto.PmsProductStatisticsInfoResult">
+        select
+            (select count(id) from pms_product where publish_status=0 and delete_status=0) as onShelfTotal,
+            (select count(id) from pms_product where publish_status=1 and delete_status=0) as offShelfTotal,
+            (select count(id) from pms_product where stock &lt;=low_stock and delete_status=0) as warnStockTotal,
+            (select count(id) from pms_product where delete_status=0) as goodsTotal
+    </select>
+
+</mapper>

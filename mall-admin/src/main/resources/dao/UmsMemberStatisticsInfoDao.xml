@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.macro.mall.dao.UmsMemberStatisticsInfoDao">
+
+    <select id="getStatInfo" resultMap="com.macro.mall.mapper.UmsMemberStatisticsInfoMapper.BaseResultMap">
+        select * from ums_member_statistics_info where member_id=#{memberId} limit 1
+    </select>
+
+    <select id="getStatInfoOfSex" resultType="com.macro.mall.dto.UmsMemberStatisticsInfoSexResult">
+        select (select count(*) from ums_member where gender=0 or gender is null) as unknown,(select count(*) from ums_member where gender=1) as male,(select count(*) from ums_member where gender=2) as female
+    </select>
+    <select id="getStatInfoOfTime" resultType="com.macro.mall.dto.UmsMemberStatisticsInfoTimeResult">
+        <choose>
+            <when test="mode==1">
+                SELECT MONTH(create_time) `index`, count(id) total
+                FROM ums_member where date_format(create_time,'%Y')=date_format(#{date},"%Y")
+                GROUP BY MONTH(create_time) ORDER BY MONTH(create_time) ASC;
+            </when>
+            <when test="mode==2">
+                select date_format(`date`, "%d") as `index`, total from (SELECT date(create_time) date ,count(id) total FROM ums_member where date_format(create_time,"%Y-%m")=date_format(#{date},"%Y-%m") GROUP BY DATE(create_time) ) t1 order by `index`;
+
+            </when>
+            <otherwise>
+                SELECT 0 as `index`, 0 as total from ums_member where false
+            </otherwise>
+        </choose>
+    </select>
+    <select id="getStatInfoOfNumber" resultType="com.macro.mall.dto.UmsMemberStatisticsInfoNumberResult">
+        select
+            (select count(id) from ums_member where date(create_time)=date(CURDATE())) as todayNumber,
+            (select count(id) from ums_member where date(create_time)=date_sub(CURDATE(), INTERVAL 1 DAY)) as yesterdayNumber,
+            (select count(id) from ums_member where date_format(create_time,"%Y-%m")=date_format(CURDATE(),"%Y-%m")) instantNumber,
+            (select count(id) from ums_member) as totalNumber
+    </select>
+</mapper>
